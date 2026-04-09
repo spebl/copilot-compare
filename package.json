@@ -2,14 +2,20 @@
   "name": "copilot-compare",
   "version": "1.0.0",
   "description": "Simple application backed by the copilot-sdk for comparing the same prompt or scenario across multiple copilot configurations.",
-  "main": "dist/index.js",
+  "main": "./out/main/index.js",
   "scripts": {
-    "build": "webpack",
-    "start": "electron .",
-    "test": "echo \"sorry, no tests yet\" && exit 1"
+    "build": "npm run package",
+    "bundle": "electron-vite build",
+    "dev": "electron-vite dev --watch",
+    "make": "npm run typecheck && npm run bundle && electron-builder --win nsis zip",
+    "package": "npm run typecheck && npm run bundle && electron-builder --dir",
+    "start": "electron-vite preview",
+    "test": "echo \"sorry, no tests yet\" && exit 1",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
+  "packageManager": "npm@11.6.1",
   "engines": {
-    "node": ">=24"
+    "node": ">=22.12.0 <25"
   },
   "author": "Spen",
   "license": "MIT",
@@ -20,16 +26,14 @@
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "24.9.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "css-loader": "^7.1.4",
-    "electron": "^41.0.4",
-    "html-webpack-plugin": "^5.6.6",
-    "style-loader": "^4.0.0",
-    "ts-loader": "^9.5.4",
+    "@vitejs/plugin-react": "^5.1.4",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.0",
+    "electron": "41.2.0",
     "typescript": "^6.0.2",
-    "webpack": "^5.105.4",
-    "webpack-cli": "^7.0.2"
+    "vite": "^7.1.7"
   }
 }

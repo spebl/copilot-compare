@@ -1,0 +1,29 @@
+appId: com.spen.copilot-compare
+productName: Copilot Compare
+directories:
+  output: dist
+files:
+  - out/main/**/*
+  - out/preload/**/*
+  - out/renderer/**/*
+  - package.json
+  - '!**/*.map'
+  - '!src/**'
+  - '!forge.config.js'
+  - '!vite.*.config.mjs'
+  - '!electron.vite.config.ts'
+  - '!notes.md'
+  - '!plan.md'
+  - '!sample-mcp-config.json'
+  - '!tsconfig.json'
+  - '!readme.md'
+asar: false
+npmRebuild: false
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
