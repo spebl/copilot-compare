@@ -4,6 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron"
 import type { CopilotClient, SessionConfig } from "@github/copilot-sdk";
 
 import {
+  SYSTEM_PROMPT_SECTION_IDS,
   type CopilotConfig,
   type CopilotResources,
   IPC_CHANNELS,
@@ -12,6 +13,7 @@ import {
   type ModelSpec,
   type ReasoningEffort,
   type RunReport,
+  type SystemPromptSections,
   type ToolCallResponse,
   type ToolReport,
   type ToolSpec,
@@ -86,6 +88,59 @@ function to_json_value(value: unknown): JsonValue | undefined {
   }
 
   return String(value);
+}
+
+function normalize_system_prompt_sections(prompt_sections: SystemPromptSections | undefined) {
+  if (!prompt_sections) {
+    return undefined;
+  }
+
+  const normalized_prompt_sections: NonNullable<SystemPromptSections> = {};
+
+  for (const section_id of SYSTEM_PROMPT_SECTION_IDS) {
+    const prompt_section = prompt_sections[section_id];
+    if (!prompt_section) {
+      continue;
+    }
+
+    if (prompt_section.action === "remove") {
+      normalized_prompt_sections[section_id] = { action: "remove" };
+      continue;
+    }
+
+    if (prompt_section.action === "replace") {
+      normalized_prompt_sections[section_id] = { action: "replace", content: prompt_section.content ?? "" };
+      continue;
+    }
+
+    if (typeof prompt_section.content !== "string" || prompt_section.content.trim().length === 0) {
+      continue;
+    }
+
+    normalized_prompt_sections[section_id] = { action: prompt_section.action, content: prompt_section.content };
+  }
+
+  return Object.keys(normalized_prompt_sections).length > 0 ? normalized_prompt_sections : undefined;
+}
+
+function create_system_message(config: CopilotConfig): SessionConfig["systemMessage"] | undefined {
+  const prompt_sections = normalize_system_prompt_sections(config.prompt_sections);
+  const prompt_mode = config.prompt_mode ?? (prompt_sections ? "customize" : config.overwrite_default_prompt ? "replace" : "append");
+  const custom_prompt = typeof config.custom_prompt === "string" && config.custom_prompt.trim().length > 0
+    ? config.custom_prompt
+    : undefined;
+
+  if (prompt_mode === "customize") {
+    return prompt_sections ? { mode: "customize", sections: prompt_sections } : undefined;
+  }
+
+  if (!custom_prompt) {
+    return undefined;
+  }
+
+  return prompt_mode === "replace"
+    ? { mode: "replace", content: custom_prompt }
+    : { mode: "append", content: custom_prompt };
 }
 
 function get_copilot_cli_command() {
@@ -296,9 +351,6 @@ app.whenReady().then(async () => {
     const tool_calls: Map<string, ToolStart> = new Map();
     const tool_reports: ToolReport[] = [];
     const session_config: SessionConfig = { onPermissionRequest: approve_all, model: config.model_id };
-    const custom_prompt = typeof config.custom_prompt === "string" && config.custom_prompt.trim().length > 0
-      ? config.custom_prompt
-      : undefined;
     const config_dir = typeof config.config_dir === "string" && config.config_dir.trim().length > 0
       ? config.config_dir.trim()
       : undefined;
@@ -313,10 +365,9 @@ app.whenReady().then(async () => {
     if (config.reasoning_effort) {
       session_config.reasoningEffort = config.reasoning_effort as ReasoningEffort;
     }
-    if (custom_prompt) {
-      session_config.systemMessage = config.overwrite_default_prompt
-        ? { mode: "replace", content: custom_prompt }
-        : { mode: "append", content: custom_prompt };
+    const system_message = create_system_message(config);
+    if (system_message) {
+      session_config.systemMessage = system_message;
     }
     if (mcp_servers) {
       session_config.mcpServers = mcp_servers;

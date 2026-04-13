@@ -1,6 +1,18 @@
 import { useRef, useState } from 'react';
 
-import type { CopilotConfig, LastRun, McpServers, ModelSpec, ReasoningEffort, RunReport, ToolSpec } from './electron-contract';
+import {
+  SYSTEM_PROMPT_SECTION_IDS,
+  type CopilotConfig,
+  type LastRun,
+  type McpServers,
+  type ModelSpec,
+  type ReasoningEffort,
+  type RunReport,
+  type SystemPromptMode,
+  type SystemPromptSectionOverride,
+  type SystemPromptSections,
+  type ToolSpec,
+} from './electron-contract';
 import type { ConfigurationLastRun, PromptRunSummary } from './prompt-runs';
 
 export type CopilotConfiguration = CopilotConfig & {
@@ -9,7 +21,7 @@ export type CopilotConfiguration = CopilotConfig & {
 
 export type ConfigurationAdditionalOptions = Pick<
   CopilotConfig,
-  'tool_names' | 'overwrite_default_prompt' | 'custom_prompt' | 'config_dir' | 'working_directory' | 'skill_directories' | 'mcp_servers'
+  'tool_names' | 'prompt_mode' | 'custom_prompt' | 'prompt_sections' | 'config_dir' | 'working_directory' | 'skill_directories' | 'mcp_servers'
 >;
 
 type CopilotCompareState = {
@@ -129,6 +141,14 @@ function normalize_optional_string(value: string | undefined) {
   return normalized_value && normalized_value.length > 0 ? normalized_value : undefined;
 }
 
+function normalize_optional_prompt_string(value: string | undefined) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value.trim().length > 0 ? value : undefined;
+}
+
 function normalize_optional_string_list(values: string[] | undefined) {
   if (!values) {
     return undefined;
@@ -136,6 +156,57 @@ function normalize_optional_string_list(values: string[] | undefined) {
 
   const normalized_values = Array.from(new Set(values.map((value) => value.trim()).filter((value) => value.length > 0)));
   return normalized_values.length > 0 ? normalized_values : undefined;
+}
+
+function normalize_prompt_sections(prompt_sections: SystemPromptSections | undefined) {
+  if (!prompt_sections) {
+    return undefined;
+  }
+
+  const normalized_prompt_sections: NonNullable<SystemPromptSections> = {};
+
+  for (const section_id of SYSTEM_PROMPT_SECTION_IDS) {
+    const prompt_section = prompt_sections[section_id];
+    if (!prompt_section) {
+      continue;
+    }
+
+    if (prompt_section.action === 'remove') {
+      normalized_prompt_sections[section_id] = { action: 'remove' };
+      continue;
+    }
+
+    if (prompt_section.action === 'replace') {
+      normalized_prompt_sections[section_id] = { action: 'replace', content: prompt_section.content ?? '' };
+      continue;
+    }
+
+    if (typeof prompt_section.content !== 'string' || prompt_section.content.trim().length === 0) {
+      continue;
+    }
+
+    normalized_prompt_sections[section_id] = { action: prompt_section.action, content: prompt_section.content };
+  }
+
+  if (Object.keys(normalized_prompt_sections).length === 0) {
+    return undefined;
+  }
+
+  return normalized_prompt_sections;
+}
+
+function get_prompt_mode(
+  configuration: Pick<CopilotConfig, 'prompt_mode' | 'overwrite_default_prompt' | 'prompt_sections'>,
+): SystemPromptMode {
+  if (configuration.prompt_mode) {
+    return configuration.prompt_mode;
+  }
+
+  if (configuration.prompt_sections && Object.keys(configuration.prompt_sections).length > 0) {
+    return 'customize';
+  }
+
+  return configuration.overwrite_default_prompt ? 'replace' : 'append';
 }
 
 function normalize_loaded_configurations(
@@ -157,14 +228,18 @@ function normalize_loaded_configurations(
 
     const model_id = models[configuration.model_id] ? configuration.model_id : default_model_id;
     const tool_names = filter_available_tool_names(configuration.tool_names, available_tool_names);
+    const prompt_sections = normalize_prompt_sections(configuration.prompt_sections);
+    const prompt_mode = get_prompt_mode(configuration);
 
     return {
       id: next_id,
       model_id,
       reasoning_effort: get_normalized_reasoning_effort(models[model_id], configuration.reasoning_effort),
       tool_names,
-      overwrite_default_prompt: configuration.overwrite_default_prompt,
+      prompt_mode,
+      overwrite_default_prompt: prompt_mode === 'replace',
       custom_prompt: configuration.custom_prompt,
+      prompt_sections,
       config_dir: configuration.config_dir,
       working_directory: configuration.working_directory,
       skill_directories: configuration.skill_directories,
@@ -280,8 +355,10 @@ export function useCopilotCompareApp(): { state: CopilotCompareState; actions: C
         id: crypto.randomUUID(),
         model_id: default_model_id,
         tool_names: available_tool_names,
+        prompt_mode: 'append',
         overwrite_default_prompt: false,
         custom_prompt: undefined,
+        prompt_sections: undefined,
         config_dir: undefined,
         working_directory: undefined,
         skill_directories: undefined,
@@ -382,17 +459,21 @@ export function useCopilotCompareApp(): { state: CopilotCompareState; actions: C
       return;
     }
 
-    const normalized_custom_prompt = normalize_optional_string(options.custom_prompt);
+    const normalized_custom_prompt = normalize_optional_prompt_string(options.custom_prompt);
+    const normalized_prompt_sections = normalize_prompt_sections(options.prompt_sections);
     const normalized_config_dir = normalize_optional_string(options.config_dir);
     const normalized_working_directory = normalize_optional_string(options.working_directory);
     const normalized_skill_directories = normalize_optional_string_list(options.skill_directories);
     const normalized_mcp_servers = options.mcp_servers && Object.keys(options.mcp_servers).length > 0 ? options.mcp_servers : undefined;
     const normalized_tool_names = filter_available_tool_names(options.tool_names, get_available_tool_names(tools));
+    const prompt_mode = options.prompt_mode ?? (normalized_prompt_sections ? 'customize' : 'append');
     update_configuration(config_id, (config) => ({
       ...config,
       tool_names: normalized_tool_names,
-      overwrite_default_prompt: options.overwrite_default_prompt,
+      prompt_mode,
+      overwrite_default_prompt: prompt_mode === 'replace',
       custom_prompt: normalized_custom_prompt,
+      prompt_sections: normalized_prompt_sections,
       config_dir: normalized_config_dir,
       working_directory: normalized_working_directory,
       skill_directories: normalized_skill_directories,

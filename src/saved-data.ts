@@ -1,7 +1,18 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
 
-import { REASONING_EFFORTS, type CopilotConfig, type ReasoningEffort } from "./electron-contract";
+import {
+  REASONING_EFFORTS,
+  SYSTEM_PROMPT_MODES,
+  SYSTEM_PROMPT_SECTION_IDS,
+  SYSTEM_PROMPT_SECTION_OVERRIDE_ACTIONS,
+  type CopilotConfig,
+  type ReasoningEffort,
+  type SystemPromptMode,
+  type SystemPromptSectionOverride,
+  type SystemPromptSectionOverrideAction,
+  type SystemPromptSections,
+} from "./electron-contract";
 import { parse_mcp_servers } from "./mcp-server-config";
 
 const CONFIGURATION_GROUP_FILE_VERSION = 1;
@@ -39,6 +50,14 @@ function is_reasoning_effort(value: unknown): value is ReasoningEffort {
   return typeof value === "string" && REASONING_EFFORTS.includes(value as ReasoningEffort);
 }
 
+function is_system_prompt_mode(value: unknown): value is SystemPromptMode {
+  return typeof value === "string" && SYSTEM_PROMPT_MODES.includes(value as SystemPromptMode);
+}
+
+function is_system_prompt_section_override_action(value: unknown): value is SystemPromptSectionOverrideAction {
+  return typeof value === "string" && SYSTEM_PROMPT_SECTION_OVERRIDE_ACTIONS.includes(value as SystemPromptSectionOverrideAction);
+}
+
 function parse_optional_string(value: unknown, error_message: string) {
   if (value === undefined) {
     return undefined;
@@ -61,6 +80,46 @@ function parse_optional_string_list(value: unknown, error_message: string) {
   }
 
   throw new Error(error_message);
+}
+
+function parse_optional_prompt_sections(value: unknown, error_message: string) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!is_record(value)) {
+    throw new Error(error_message);
+  }
+
+  const prompt_section_entries = SYSTEM_PROMPT_SECTION_IDS.flatMap((section_id) => {
+    const section_value = value[section_id];
+    if (section_value === undefined) {
+      return [];
+    }
+
+    if (!is_record(section_value) || !is_system_prompt_section_override_action(section_value.action)) {
+      throw new Error(error_message);
+    }
+
+    const content = section_value.content;
+    if (content !== undefined && typeof content !== "string") {
+      throw new Error(error_message);
+    }
+
+    const prompt_section: SystemPromptSectionOverride = section_value.action === "remove"
+      ? { action: "remove" }
+      : content === undefined
+        ? { action: section_value.action }
+        : { action: section_value.action, content };
+
+    return [[section_id, prompt_section] as const];
+  });
+
+  if (prompt_section_entries.length === 0) {
+    return undefined;
+  }
+
+  return Object.fromEntries(prompt_section_entries) as SystemPromptSections;
 }
 
 function parse_copilot_config(value: unknown, index: number): CopilotConfig {
@@ -87,6 +146,13 @@ function parse_copilot_config(value: unknown, index: number): CopilotConfig {
       : (() => {
           throw new Error(`Configuration ${index + 1} has an invalid tool_names list.`);
         })();
+  const prompt_mode = value.prompt_mode === undefined
+    ? undefined
+    : is_system_prompt_mode(value.prompt_mode)
+      ? value.prompt_mode
+      : (() => {
+          throw new Error(`Configuration ${index + 1} has an invalid prompt_mode value.`);
+        })();
   const overwrite_default_prompt = value.overwrite_default_prompt === undefined
     ? false
     : typeof value.overwrite_default_prompt === "boolean"
@@ -101,6 +167,10 @@ function parse_copilot_config(value: unknown, index: number): CopilotConfig {
       : (() => {
           throw new Error(`Configuration ${index + 1} has an invalid custom_prompt value.`);
         })();
+  const prompt_sections = parse_optional_prompt_sections(
+    value.prompt_sections,
+    `Configuration ${index + 1} has an invalid prompt_sections value.`,
+  );
   const config_dir = parse_optional_string(
     value.config_dir,
     `Configuration ${index + 1} has an invalid config_dir value.`,
@@ -122,8 +192,10 @@ function parse_copilot_config(value: unknown, index: number): CopilotConfig {
     model_id: value.model_id,
     reasoning_effort,
     tool_names,
+    prompt_mode,
     overwrite_default_prompt,
     custom_prompt,
+    prompt_sections,
     config_dir,
     working_directory,
     skill_directories,

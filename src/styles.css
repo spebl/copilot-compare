@@ -660,6 +660,12 @@ body {
   color: var(--color-danger-text);
 }
 
+.config-prompt-badge-customize {
+  border-color: rgba(0, 120, 212, 0.18);
+  background: rgba(0, 120, 212, 0.1);
+  color: #0d4f83;
+}
+
 .config-mcp-badge {
   flex: 0 0 auto;
   padding: 6px 10px;
@@ -703,7 +709,7 @@ body {
 .config-prompt-modal {
   display: flex;
   flex-direction: column;
-  width: min(680px, 100%);
+  width: min(820px, 100%);
   max-height: min(90vh, 800px);
   overflow: hidden;
   border: 1px solid var(--color-border-panel);
@@ -722,7 +728,7 @@ body {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(125, 104, 83, 0.72) transparent;
-  padding: 0 20px 20px;
+  padding: 16px 20px 20px;
 }
 
 .config-prompt-modal-body::-webkit-scrollbar,
@@ -795,9 +801,14 @@ body {
   flex-direction: column;
 }
 
+.config-prompt-copy,
 .config-prompt-modal-copy,
 .config-prompt-input-group {
   gap: 6px;
+}
+
+.config-prompt-copy {
+  min-width: 0;
 }
 
 .config-prompt-group-title {
@@ -823,6 +834,7 @@ body {
 }
 
 .config-prompt-mode-group {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -832,18 +844,14 @@ body {
   border-radius: 999px;
   background: rgba(245, 245, 240, 0.9);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
 }
 
-.config-prompt-mode-legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.config-prompt-mode-group:focus-visible {
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 3px var(--color-focus-ring);
 }
 
 .config-prompt-mode-option {
@@ -857,14 +865,6 @@ body {
   background: transparent;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.config-prompt-mode-option input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  margin: 0;
-  cursor: pointer;
 }
 
 .config-prompt-mode-option[data-selected='true'] {
@@ -885,7 +885,110 @@ body {
 }
 
 .config-prompt-input-group {
-  gap: 8px;
+  gap: 12px;
+}
+
+.config-prompt-section {
+  padding: 14px;
+  border: 1px solid var(--color-border-section);
+  border-radius: var(--radius-panel);
+  background: rgba(255, 254, 250, 0.82);
+  box-shadow: var(--shadow-surface);
+}
+
+.config-prompt-standalone-label {
+  margin-top: 4px;
+}
+
+.config-prompt-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.config-prompt-section-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--color-border-section);
+  border-radius: var(--radius-panel);
+  background: rgba(255, 254, 250, 0.9);
+  box-shadow: var(--shadow-surface);
+}
+
+.config-prompt-section-header,
+.config-prompt-section-select-field {
+  display: flex;
+}
+
+.config-prompt-section-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.config-prompt-section-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.config-prompt-section-title,
+.config-prompt-section-description,
+.config-prompt-section-note,
+.config-prompt-section-empty {
+  margin: 0;
+}
+
+.config-prompt-section-title {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.config-prompt-section-description,
+.config-prompt-section-note,
+.config-prompt-section-empty {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.config-prompt-section-select-field {
+  flex: 0 0 180px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-prompt-section-select-label {
+  color: var(--color-text-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.config-prompt-section-select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-field);
+  border-radius: var(--radius-control);
+  background: var(--color-bg-surface);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+}
+
+.config-prompt-section-select:focus {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.config-prompt-section-input {
+  min-height: 7rem;
 }
 
 .config-session-path-section {
@@ -1138,6 +1241,15 @@ body {
 
   .config-mcp-actions {
     justify-content: flex-start;
+  }
+
+  .config-prompt-section-header {
+    flex-direction: column;
+  }
+
+  .config-prompt-section-select-field {
+    flex: none;
+    width: 100%;
   }
 
   .config-session-path-grid {

@@ -14,8 +14,32 @@ export const IPC_CHANNELS = {
 } as const;
 
 export const REASONING_EFFORTS = ["low", "medium", "high", "xhigh"] as const;
+export const SYSTEM_PROMPT_MODES = ["append", "replace", "customize"] as const;
+export const SYSTEM_PROMPT_SECTION_IDS = [
+  "identity",
+  "tone",
+  "tool_efficiency",
+  "environment_context",
+  "code_change_rules",
+  "guidelines",
+  "safety",
+  "tool_instructions",
+  "custom_instructions",
+  "last_instructions",
+] as const;
+export const SYSTEM_PROMPT_SECTION_OVERRIDE_ACTIONS = ["append", "prepend", "replace", "remove"] as const;
 
 export type ReasoningEffort = typeof REASONING_EFFORTS[number];
+export type SystemPromptMode = typeof SYSTEM_PROMPT_MODES[number];
+export type SystemPromptSectionId = typeof SYSTEM_PROMPT_SECTION_IDS[number];
+export type SystemPromptSectionOverrideAction = typeof SYSTEM_PROMPT_SECTION_OVERRIDE_ACTIONS[number];
+
+export type SystemPromptSectionOverride = {
+  action: SystemPromptSectionOverrideAction;
+  content?: string;
+};
+
+export type SystemPromptSections = Partial<Record<SystemPromptSectionId, SystemPromptSectionOverride>>;
 
 export type McpServerConfigBase = {
   tools?: string[];
@@ -44,8 +68,10 @@ export type CopilotConfig = {
   model_id: string;
   reasoning_effort?: ReasoningEffort | undefined;
   tool_names: string[];
-  overwrite_default_prompt: boolean;
+  prompt_mode?: SystemPromptMode | undefined;
+  overwrite_default_prompt?: boolean | undefined;
   custom_prompt?: string | undefined;
+  prompt_sections?: SystemPromptSections | undefined;
   config_dir?: string | undefined;
   working_directory?: string | undefined;
   skill_directories?: string[] | undefined;

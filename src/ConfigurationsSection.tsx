@@ -20,6 +20,30 @@ type ConfigurationsSectionProps = {
   on_more: (config_id: string) => void;
 };
 
+function get_prompt_badge(config: CopilotConfiguration) {
+  const prompt_mode = config.prompt_mode ?? (Object.keys(config.prompt_sections ?? {}).length > 0 ? 'customize' : config.overwrite_default_prompt ? 'replace' : 'append');
+
+  if (prompt_mode === 'customize') {
+    const prompt_section_count = Object.keys(config.prompt_sections ?? {}).length;
+    if (prompt_section_count === 0) {
+      return null;
+    }
+
+    return {
+      class_name: 'config-prompt-badge-customize',
+      label: `Prompt: Advanced (${prompt_section_count})`,
+    };
+  }
+
+  if (!config.custom_prompt?.trim().length) {
+    return null;
+  }
+
+  return prompt_mode === 'replace'
+    ? { class_name: 'config-prompt-badge-replace', label: 'Prompt: Replace' }
+    : { class_name: 'config-prompt-badge-append', label: 'Prompt: Append' };
+}
+
 export function ConfigurationsSection({
   copilot_configurations,
   models,
@@ -63,7 +87,7 @@ export function ConfigurationsSection({
           copilot_configurations.map((config) => {
             const model_spec = models[config.model_id];
             const is_running = running_config_ids.includes(config.id);
-            const has_custom_prompt = config.custom_prompt?.trim().length ? true : false;
+            const prompt_badge = get_prompt_badge(config);
             const mcp_server_count = Object.keys(config.mcp_servers ?? {}).length;
             const supported_reasoning_efforts = model_spec?.supported_reasoning_efforts ?? [];
             const supports_reasoning_effort = supported_reasoning_efforts.length > 0;
@@ -85,9 +109,9 @@ export function ConfigurationsSection({
                   ) : null}
                   <span className="billing-mul">{model_spec?.billing_mul ? `${model_spec.billing_mul.toString()}x` : '0x'}</span>
                   <button className="btn btn-card btn-more" onClick={() => on_more(config.id)} disabled={is_running}>More</button>
-                  {has_custom_prompt ? (
-                    <span className={`config-prompt-badge ${config.overwrite_default_prompt ? 'config-prompt-badge-replace' : 'config-prompt-badge-append'}`}>
-                      {config.overwrite_default_prompt ? 'Prompt: Replace' : 'Prompt: Append'}
+                  {prompt_badge ? (
+                    <span className={`config-prompt-badge ${prompt_badge.class_name}`}>
+                      {prompt_badge.label}
                     </span>
                   ) : null}
                   {mcp_server_count > 0 ? (
