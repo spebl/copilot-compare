@@ -4,6 +4,8 @@ Simple Electron app for comparing the same prompt or scenario across multiple Gi
 
 Built with Electron, React, TypeScript, electron-vite, and electron-builder.
 
+![Sample run](sample-running.jpg)
+
 ## Requirements
 
 - Node.js 24.6.0 for local development (`.nvmrc`)
